@@ -19,7 +19,7 @@ pro = ts.pro_api('86751c82b4ec16a65999bbb501c281fa974daa3babba9b206fd75d00')
 # In[2] Define functions
 def get_daily_data(code, start = None, end = None):
     df=pro.daily(ts_code=code, 
-                  adj='qfq', 
+                  adj='hfq', 
                   start_date=start, 
                   end_date=end)
     return df
@@ -30,6 +30,7 @@ def get_code():
 
 def update_sql(db_name, start = None, end = None):
     from datetime import datetime,timedelta
+    engine = create_engine('postgresql+psycopg2://postgres:Zys1994zys@localhost:1106/postgres')
     if start == None:
         query_string = f"select trade_date from {db_name}"
         df = pd.read_sql(query_string,engine)
@@ -37,7 +38,7 @@ def update_sql(db_name, start = None, end = None):
     if end == None:    
         end = datetime.date.today()
     for code in get_code():
-        data=get_data(code,start,end)
+        data=get_daily_data(code,start,end)
         insert_sql(data,db_name)
     
     print(f'{start}:{end}期间{db_name}数据已成功更新')
@@ -58,7 +59,9 @@ def deduplication(db_name):
                             password = "Zys1994zys", 
                             host = "localhost",
                             port = "1106")
-    sql_commandline = "delete from stock_daily_bar as ta where ta.ts_code <> ( select max(tb.ts_code) from stock_daily_bar as tb where ta.amount = tb.amount)"
+    cursor = conn.cursor()
+    sql_commandline = "delete from stock_daily_bar where ctid not in (select min(ctid) from stock_daily_bar group by amount)"
+    cursor.execute(sql_commandline)
 # In[3] Run
 
 
